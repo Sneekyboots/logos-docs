@@ -23,7 +23,7 @@ This page tracks unreleased code. The dependency snippets pin the framework at a
 This document is accurate for **Testnet v0.2.1**.
 :::
 
-SPEL extension libraries ship reusable on-chain primitives, access control, freeze switches, multisig, etc., that consuming programs adopt with a single attribute. This guide is for library authors. App developers consuming an existing extension should follow that extension's own integration guide instead.
+SPEL extension libraries ship reusable on-chain primitives, access control, freeze switches, multisig, etc., that consuming [programs](../../get-started/glossary.md#program) adopt with a single attribute. This guide is for library authors. App developers consuming an existing extension should follow that extension's own integration guide instead.
 
 ## What an extension provides
 
@@ -74,7 +74,7 @@ my-extension-macros = { path = "../my-extension-macros" }
 
 - `extension_attr` is the attribute name consumers put on their `#[lez_program]` module to opt in. By convention, match it to your crate name (with `_` not `-`).
 
-Per-instruction gate attributes your library defines (for example, `#[require_admin]` from `admin-authority`) need no metadata for the check itself: they are ordinary proc-macros that re-expand on the emitted handler and consume themselves, so the framework leaves them alone. If your gate needs specific account parameters on every gated instruction, you can declare those in an optional inject block so consumers do not have to write them out (see the gate attribute section below).
+Per-instruction gate attributes your library defines (for example, `#[require_admin]` from `admin-authority`) need no metadata for the check itself: they are ordinary proc-macros that re-expand on the emitted handler and consume themselves, so the framework leaves them alone. If your gate needs specific [account](../../get-started/glossary.md#account) parameters on every gated instruction, you can declare those in an optional inject block so consumers do not have to write them out (see the gate attribute section below).
 
 ## Define the runtime library
 
@@ -107,7 +107,7 @@ Three things to note:
 
 - `extern crate self as my_extension;`, lets the library reference its own types via the absolute path `::my_extension::MyState`. The framework emits cross-crate calls into the consumer's binary using that path, so the path needs to resolve both in the library's own compile and at the consumer's compile.
 - `pub use my_extension_macros::{instruction, my_extension};`, re-exports the marker attribute and the no-op `#[instruction]` shim so consumers (and the library's own `lib.rs`) can use them without importing the macros crate directly.
-- `#[account(...)]` attributes on parameters, these are framework helper attributes that describe PDA seeds, signer requirements, etc. The library's own `#[instruction]` shim strips them at the library's compile so rustc accepts the source; the framework reads them during the path-dependency scan.
+- `#[account(...)]` attributes on parameters, these are framework helper attributes that describe [PDA](../../get-started/glossary.md#pda) seeds, signer requirements, etc. The library's own `#[instruction]` shim strips them at the library's compile so rustc accepts the source; the framework reads them during the path-dependency scan.
 - Name the state parameter after the inject role you declare for it (`my_state` here). Injection reuse, wrap stamping, and embedded retargeting resolve your accounts by role name, a differently named parameter breaks embedded mode with an argument-count error at the consumer's compile.
 - When you write the real body, post-states are the inner `account` values (`vec![my_state.account, caller.account]`). If the instruction claims any account, every entry in that `vec` becomes an `(account, AutoClaim)` tuple instead, with `AutoClaim::None` for the ones it does not claim, the way `admin-authority`'s `admin_initialize` returns `vec![(config.account, AutoClaim::Claimed(..)), (caller.account, AutoClaim::None)]`. The `vec` is homogeneous either way, mixing a bare `account` with a tuple fails to compile with `expected Account, found (Account, AutoClaim)`. Consumer handlers return the `AccountWithMetadata` wrappers, library handlers do not. The reference samples show both patterns.
 
