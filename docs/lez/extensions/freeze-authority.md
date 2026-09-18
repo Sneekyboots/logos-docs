@@ -150,7 +150,7 @@ pub fn transfer(
 The injected gate performs two checks before the handler body runs:
 
 1. **Program-wide check**, reads `freeze_config.is_frozen`. Rejects if true.
-2. **Per-account check**, derives the PDA at `(program_id, "frozen", caller.account_id)` and reads `is_frozen`. Rejects if true. Missing PDA = not frozen.
+1. **Per-account check**, derives the PDA at `(program_id, "frozen", caller.account_id)` and reads `is_frozen`. Rejects if true. Missing PDA = not frozen.
 
 Both checks pass for the call to proceed.
 

@@ -30,8 +30,8 @@ SPEL extension libraries ship reusable on-chain primitives, access control, free
 An extension is a normal Rust crate that:
 
 1. Defines one or more `#[instruction]` functions that consumers can call from the SPEL CLI / wallets.
-2. Declares a marker attribute name in its `Cargo.toml` so consumers can opt in.
-3. Optionally ships per-instruction gate attributes (like `#[require_admin]`) that consumers apply to their own instructions.
+1. Declares a marker attribute name in its `Cargo.toml` so consumers can opt in.
+1. Optionally ships per-instruction gate attributes (like `#[require_admin]`) that consumers apply to their own instructions.
 
 When a consumer puts the marker attribute on a `#[lez_program]` module, the framework discovers the extension via Cargo metadata, scans the library's `src/lib.rs` for `#[instruction]` functions, and merges them into the consumer's dispatcher and IDL automatically. No framework changes are needed per extension.
 
@@ -306,9 +306,9 @@ A body-inject gate that references parameters by name only, the way `#[require_a
 Some extensions naturally build on others. `freeze-authority` depends on `admin-authority`, its freeze-authority slot is governed by admin signatures. When your extension does this:
 
 1. **Declare a normal Cargo dependency** on the other extension in your `Cargo.toml`, path or git. `freeze-authority` uses a git dependency on `admin-authority` pinned to its `v0.1.3` tag. Consumers get both extensions in their dependency graph automatically.
-2. **Add both markers to the consumer's mod.** Consumers write `#[admin_authority] #[my_extension]` on their `#[lez_program]` mod. Each marker triggers its own discovery.
-3. **Import the gate attributes you compose with.** For example, `use admin_authority::require_admin;` in your library source, then `#[require_admin]` on instructions that should require an admin signature (like an initialisation that creates your config PDA).
-4. **List the other extension's exempt-while-wrapped instructions** in your `wrap_instructions.exempt` if applicable. freeze-authority lists admin-authority's three management instructions so they stay callable while the program is frozen.
+1. **Add both markers to the consumer's mod.** Consumers write `#[admin_authority] #[my_extension]` on their `#[lez_program]` mod. Each marker triggers its own discovery.
+1. **Import the gate attributes you compose with.** For example, `use admin_authority::require_admin;` in your library source, then `#[require_admin]` on instructions that should require an admin signature (like an initialisation that creates your config PDA).
+1. **List the other extension's exempt-while-wrapped instructions** in your `wrap_instructions.exempt` if applicable. freeze-authority lists admin-authority's three management instructions so they stay callable while the program is frozen.
 
 The framework deduplicates path-dependency directories, so admin-authority is scanned once even if both your extension and the consumer name it as a path dependency.
 
