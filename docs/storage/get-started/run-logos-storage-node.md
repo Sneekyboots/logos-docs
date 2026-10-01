@@ -28,10 +28,13 @@ This procedure covers how to build and run the [Logos Storage Module](https://gi
 - A supported OS:
     - Linux
     - Mac OS (should work, but not tested)
+    - Windows 10 or 11 x86_64. The commands in this guide use POSIX shell syntax, so run them in Git Bash (part of [Git for Windows](https://git-scm.com/download/win)).
 - `jq` on your `PATH`.
     - To verify, run: `jq --version`
-- [`logosctl`](https://github.com/logos-co/logos-logoscore-cli/releases/tag/0.3.0) installed.
+    - On Windows, install it with `winget install jqlang.jq`.
+- [`logosctl`](https://github.com/logos-co/logos-logoscore-cli/releases/tag/0.3.1) installed.
    - Install it by running `curl -fsSL https://raw.githubusercontent.com/logos-co/logos-docs/main/resources/scripts/install-logosctl.sh | sudo sh`
+   - On Windows, run `irm https://raw.githubusercontent.com/logos-co/logos-docs/main/resources/scripts/install-logosctl.ps1 | iex` in PowerShell instead, then open a new terminal.
 :::
 
 ## What to expect
@@ -44,7 +47,7 @@ In this tutorial, you will:
 
 ## Load the Logos storage module
 
-Download the Logos storage [module](../../get-started/glossary.md#module) from the [catalogue](../../get-started/glossary.md#catalogue), then load it in `logosctl`.
+`logosctl` ships the Logos storage [module](../../get-started/glossary.md#module) and loads it when the daemon starts, because the package downloader uses it as an optional dependency to fetch packages. The package downloader may also have started the storage node already, with the default configuration or the one saved by your last `init`. Stop it first so that you can start it with your own configuration.
 
 1.  Start `logosctl`:
 
@@ -52,32 +55,42 @@ Download the Logos storage [module](../../get-started/glossary.md#module) from t
     logosctl daemon start
     ```
 
-1.  In a new terminal window with the same user, refresh the official module catalogue:
+1.  In a new terminal window with the same user, confirm that `storage_module` is loaded:
+
+    ```sh
+    logosctl module ls
+    ```
+
+    - If it isn't listed, install it from the [catalogue](../../get-started/glossary.md#catalogue), pinned to version 3.0.0, and load it:
 
     ```sh
     logosctl catalog refresh
+    logosctl package install storage_module --version 3.0.0 --yes
+    logosctl module load storage_module
     ```
 
-1.  Install the Logos storage module package, pinned to version 3.0.0:
-
-    ```sh
-    logosctl package install storage_module \
-    --version 3.0.0 \
-    --yes
-    ```
+    - A `module load` sent before the daemon is ready fails with an RPC or missing client config error. If that happens, check `logosctl status` again and retry.
 
     :::note
     Individual module package versions (for example, storage module version 3.0.0) are pinned independently and do not necessarily match the testnet version number (0.3.0).
     :::
 
-1.  Load the Logos storage module and confirm that it loaded:
+1.  Check whether the storage node is already running:
 
-    ```bash
-    logosctl module load storage_module
-    logosctl module ls
+    ```sh
+    logosctl call storage_module isRunning
     ```
 
-    - A `module load` sent before the daemon is ready fails with an RPC or missing client config error. If that happens, check `logosctl status` again and retry.
+1.  If the result is `true`, stop the node, wait until `isRunning` returns `false`, then destroy it:
+
+    ```sh
+    logosctl call storage_module stop
+    # Wait a few seconds, then check that isRunning returns false
+    logosctl call storage_module isRunning
+    logosctl call storage_module destroy
+    ```
+
+    - Don't unload and reload the module instead: the package downloader starts the node again as soon as the module is back.
 
 ## Configure and start the node
 
@@ -92,12 +105,12 @@ To see every method the module exposes (the same methods you can `call`), run `l
 1.  Ask the Storage module to produce a suitable default configuration:
 
     ```sh
-    ./logosctl call storage_module loadConfigOrDefault | jq ".result.value | fromjson" > config.json
+    logosctl call storage_module loadConfigOrDefault | jq ".result.value | fromjson" > config.json
     ```
 
     Now edit the configuration and modify:
 
-      * `data-dir`: should point to an absolute path on your disk, to which you have write access;
+      * `data-dir`: should point to an absolute path on your disk, to which you have write access. On Windows, use a Windows path such as `C:/Users/<you>/logos-storage-data`: Git Bash converts paths in command arguments, but not inside the JSON file;
       * `listen-port`: should contain a valid TCP port which is currently free on your local machine.
 
     :::tip
@@ -137,10 +150,10 @@ We will now publish a file to the Logos storage network. We create a simple file
     echo "Hello world from Logos Storage" > "$(pwd)/hello.txt"
     ```
 
-1.  Upload the file to the network with `uploadUrl`. It takes an **absolute** path and a chunk size in bytes, and returns immediately; the upload runs in the background and completes with a `storageUploadDone` event:
+1.  Upload the file to the network with `uploadUrl`. It takes an **absolute** path, a chunk size in bytes, and an `advertise` flag—`true` announces the file and serves it to other nodes. It returns immediately; the upload runs in the background and completes with a `storageUploadDone` event:
 
     ```sh
-    logosctl call storage_module uploadUrl "$(pwd)/hello.txt" false 65536 false false
+    logosctl call storage_module uploadUrl "$(pwd)/hello.txt" 65536 true
     ```
 
     :::info
